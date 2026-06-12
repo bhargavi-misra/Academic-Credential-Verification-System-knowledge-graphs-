@@ -1,227 +1,112 @@
-# Academic Credential Verification System using LLMs and Knowledge Graphs
+# Academic Credential Verifier
 
-## Overview
-
-The Academic Credential Verification System is an AI-powered solution that verifies academic credentials by combining Large Language Models (LLMs) and Knowledge Graphs.
-
-The system extracts information from academic certificates in PDF format, converts unstructured text into structured data using Google's Gemini LLM, and verifies the extracted credentials against a Neo4j Knowledge Graph representing institutional records.
-
-This project demonstrates how LLMs and graph databases can be integrated to automate document verification and generate explainable verification reports.
+A notebook-based pipeline that verifies student academic credentials against a Neo4j graph database. Certificates are uploaded as PDFs, parsed using PyMuPDF, and structured using Gemini AI — the extracted fields are then matched against the database and a verification report is generated with an AI-written explanation.
 
 ---
 
-## Problem Statement
+## Why a Graph Database
 
-Academic credential verification is often a manual and time-consuming process. Institutions and organizations must verify information such as:
+Academic credentials are inherently relational — a student is connected to a university, a degree, and a graduation year. A graph database models these relationships directly as nodes and edges, making traversal queries natural and efficient. Neo4j was chosen over a relational database because credential verification is fundamentally a graph traversal problem, not a row lookup.
 
-* Student Name
-* University Name
-* Degree
-* Graduation Year
-
-Traditional verification methods require human intervention and are prone to delays.
-
-This project automates the verification process using AI and graph-based reasoning.
-
----
-
-## Objectives
-
-* Extract academic information from PDF certificates.
-* Convert unstructured certificate text into structured entities.
-* Store and manage academic records using a Knowledge Graph.
-* Verify extracted credentials against graph-based institutional records.
-* Generate verification reports and explanations.
-
----
-
-## System Architecture
-
-```text
-PDF Certificate
-       │
-       ▼
-PyMuPDF Text Extraction
-       │
-       ▼
-Gemini LLM
-       │
-       ▼
-Structured JSON
-       │
-       ▼
-Neo4j AuraDB Knowledge Graph
-       │
-       ▼
-Credential Verification Engine
-       │
-       ▼
-Verification Report
-       │
-       ▼
-AI-Generated Explanation
+```
+(Student)-[:STUDIED_AT]->(University)
+(Student)-[:HAS_DEGREE]->(Degree)
+(Student)-[:GRADUATED_IN]->(Year)
 ```
 
 ---
 
-## Technologies Used
+## Tech Stack
 
-### Programming Language
-
-* Python
-
-### Large Language Model
-
-* Google Gemini
-
-### Graph Database
-
-* Neo4j AuraDB
-
-### PDF Processing
-
-* PyMuPDF
-
-### Development Environment
-
-* Google Colab
-
-### Libraries
-
-* neo4j
-* google-generativeai
-* pymupdf
-* json
-* getpass
+| Tool | Purpose |
+|---|---|
+| Google Gemini 2.5 Flash | PDF text → structured JSON extraction + result explanation |
+| Neo4j Aura | Graph database storing student credential records |
+| PyMuPDF (fitz) | PDF parsing and text extraction |
+| Python (Google Colab) | Orchestration |
 
 ---
 
-## Knowledge Graph Design
+## How It Works
 
-### Nodes
+1. A certificate PDF is uploaded and its text is extracted with PyMuPDF.
+2. Gemini reads the raw text and extracts four fields — name, university, degree, year — returning them as JSON.
+3. The extracted fields are looked up in Neo4j using a parameterised Cypher query.
+4. Each field is checked independently. Any mismatch is recorded and returned as a reason.
+5. A structured report is printed and Gemini generates a plain-language explanation of the outcome.
 
-* Student
-* University
-* Degree
-* Year
+---
 
-### Relationships
+## Setup
 
-* STUDIED_AT
-* HAS_DEGREE
-* GRADUATED_IN
+### Prerequisites
 
-Example:
+- Google Colab (recommended) or a local Jupyter environment
+- A [Neo4j Aura](https://neo4j.com/cloud/platform/aura-graph-database/) free-tier account
+- A [Google AI Studio](https://aistudio.google.com/) API key for Gemini
 
-```text
-Bhargavi
-   │
-STUDIED_AT
-   │
-Manipal University Jaipur
+### 1. Open the notebook in Colab
 
-Bhargavi
-   │
-HAS_DEGREE
-   │
-B.Tech CSE
+Upload `Academic_Credential_Verifier.ipynb` to Google Colab and run cells top to bottom.
 
-Bhargavi
-   │
-GRADUATED_IN
-   │
-2028
+### 2. Install dependencies
+
+The first three cells install all required packages:
+
+```
+!pip install google-generativeai
+!pip install neo4j
+!pip install pymupdf
+```
+
+### 3. Configure Gemini
+
+Enter your Gemini API key when prompted. The key is entered securely via `getpass` and is not stored.
+
+### 4. Connect to Neo4j
+
+You will need three values from your Neo4j Aura console — the connection URI, username, and password. Enter them when prompted. The notebook calls `verify_connectivity()` immediately after connecting, so any credential errors surface right away.
+
+### 5. Seed sample data
+
+Run the seed cell once to populate the database with two test students:
+
+| Student | University | Degree | Year | Expected result |
+|---|---|---|---|---|
+| Bhargavi | Manipal University Jaipur | B.Tech CSE | 2028 | VERIFIED |
+| Rahul | VIT Vellore | B.Tech ECE | 2026 | NOT VERIFIED (if mismatched fields are submitted) |
+
+This lets you test both the verified and not-verified paths without modifying any code.
+
+### 6. Run verification
+
+Upload a certificate PDF when prompted. The notebook will extract credentials, verify them, print a report, and generate an AI explanation — all in sequence.
+
+---
+
+## Verification Logic
+
+The Cypher query matches a student by name and retrieves their university, degree, and year from the graph. Each field is then compared independently against what was extracted from the certificate. All three must match for the credential to be marked `VERIFIED`.
+
+```
+Status: VERIFIED       → All fields matched
+Status: NOT VERIFIED   → One or more of: University mismatch, Degree mismatch, Year mismatch
+Status: NOT VERIFIED   → Student not found
 ```
 
 ---
 
-## Workflow
+## Project Structure
 
-### Step 1: Upload Certificate
-
-The user uploads an academic certificate in PDF format.
-
-### Step 2: Extract Text
-
-PyMuPDF extracts textual content from the uploaded PDF.
-
-### Step 3: Information Extraction
-
-Gemini extracts:
-
-* Student Name
-* University
-* Degree
-* Graduation Year
-
-and returns structured JSON.
-
-Example:
-
-```json
-{
-  "name": "Bhargavi",
-  "university": "Manipal University Jaipur",
-  "degree": "B.Tech CSE",
-  "year": 2028
-}
 ```
-
-### Step 4: Knowledge Graph Verification
-
-The extracted information is verified against records stored in Neo4j AuraDB.
-
-### Step 5: Report Generation
-
-The system generates:
-
-* Verification Status
-* Failure Reasons (if any)
-* Explanation
-
----
-
-### Verified Credential
-
-```text
-Academic Credential Verification Report
-
-Student: Bhargavi
-University: Manipal University Jaipur
-Degree: B.Tech CSE
-Year: 2028
-
-Status: VERIFIED
-Reason: All fields matched
-```
-
-### Unverified Credential
-
-```text
-Academic Credential Verification Report
-
-Student: Bhargavi
-University: Manipal University Jaipur
-Degree: B.Tech CSE
-Year: 2027
-
-Status: NOT VERIFIED
-Reason: Year mismatch
+Academic_Credential_Verifier.ipynb   # Main notebook
+README.md                            # This file
 ```
 
 ---
 
-## Features
+## Limitations
 
-* PDF certificate processing
-* LLM-based entity extraction
-* Knowledge graph-based verification
-* Detailed verification reports
-* Explainable AI responses
-* Secure runtime credential handling
-
----
-
-## Project Outcome
-
-This project successfully demonstrates how Large Language Models and Knowledge Graphs can be combined to create an intelligent academic credential verification system capable of extracting, validating, and explaining academic records automatically.
+- Name matching is exact and case-sensitive. Nicknames or name variations will return "Student not found."
+- The pipeline handles single-page and multi-page PDFs but will not work on scanned image-only PDFs (no text layer).
+- The Gemini extraction step depends on the certificate being clearly formatted. Heavily stylised certificates may produce imperfect JSON.
