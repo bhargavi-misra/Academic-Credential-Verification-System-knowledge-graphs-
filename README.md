@@ -177,11 +177,9 @@ The system generates:
 
 * Verification Status
 * Failure Reasons (if any)
-* AI-generated explanation
+* Explanation
 
 ---
-
-## Sample Output
 
 ### Verified Credential
 
@@ -221,17 +219,6 @@ Reason: Year mismatch
 * Detailed verification reports
 * Explainable AI responses
 * Secure runtime credential handling
-
----
-
-## Future Scope
-
-* OCR support for scanned certificates
-* Multi-university credential databases
-* Real-time institutional verification APIs
-* Blockchain-based credential validation
-* Web-based user interface
-* Fraud detection and anomaly analysis
 
 ---
 
